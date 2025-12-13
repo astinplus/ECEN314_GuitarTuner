@@ -25,26 +25,18 @@ def find_closest_string(freq, tuning=STANDARD_TUNING):
 
 def get_fundamental(stream):
     data = stream.read(CHUNK)
-    # Convert byte data to numpy array
+    # Perform fft on audio data
     audio_data = np.frombuffer(data, dtype=np.int16)
-
     fft_data = np.abs(np.fft.rfft(audio_data))
 
-    # Alejandro's solution
-    # max_index = np.argmax(fft_data)
     max_indices = np.argpartition(fft_data, -N_MAX_VALUES)[-N_MAX_VALUES:]
     pairs = {}
     for max_index in max_indices:
-        # print("Frequency: "+str(x[max_index])+", Magnitude: "+str(fft_data[max_index]))
-
         for i in range(2, 5 + 1):
-            # print("("+str(i)+"): Frequency: "+str(x[int(max_index/i)])+", Magnitude: "+str(fft_data[int(max_index/i)]))
-            # pairs.append([x[int(max_index/i)], fft_data[int(max_index/i)]])
             pairs[X[int(max_index / i)]] = fft_data[int(max_index / i)]
     filtered_pairs = {k: v for k, v in pairs.items() if k > 60}
     if len(filtered_pairs) > 0:
         guessed_fundamental = max(filtered_pairs, key=filtered_pairs.get)
-        # print(filtered_pairs)
         return (guessed_fundamental, filtered_pairs[guessed_fundamental])
     else:
         return (-1, 0)
@@ -63,11 +55,16 @@ stream = p.open(format=FORMAT,
 # pygame initialization
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 240
 pygame.init()
+try:
+    icon_image = pygame.image.load('guitar-icon-png-1.png')
+    pygame.display.set_icon(icon_image)
+except pygame.error as e:
+    print(f"Error loading image: {e}")
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Austin's Guitar Tuner")
 running = True
 
 font = pygame.font.SysFont(None, 48)
-
 
 try:
     while running:
@@ -86,21 +83,14 @@ try:
 
             if mag_fundamental > 6000000:
                 print("Guessed Fundamental: " + str(guessed_fundamental) + ", Magnitude: " + str(mag_fundamental))
-                c, e = find_closest_string(guessed_fundamental)
+                c, e = find_closest_string(guessed_fundamental)  # c = closest string (string), e = how off it is (float)
                 if abs(e) < STRING_IDENTIFY_THRESHOLD:
                     text = STANDARD_TUNING[c]
-                    freq_text = f"{guessed_fundamental:.2f}"
+                    freq_text = f"{guessed_fundamental:.2f} Hz"
                     out_of_tune = e
                 else:
                     text = ""
                     freq_text = ""
-                # if abs(e) < IN_TUNE_THRESHOLD:
-                #     print("Closest String: " + STANDARD_TUNING[c] + ", you're more or less in tune!")
-                # elif abs(e) < STRING_IDENTIFY_THRESHOLD:
-                #     if e > 0:
-                #         print("Closest String: " + STANDARD_TUNING[c] + ", you're a little high!")
-                #     if e < 0:
-                #         print("Closest String: " + STANDARD_TUNING[c] + ", you're a little low!")
 
         # render text
         text_box = font.render(text, True, "Black")
@@ -110,7 +100,7 @@ try:
 
         freq_text_box = font.render(freq_text, True, "Black")
         freq_text_rect = freq_text_box.get_rect()
-        freq_text_rect.center = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 30)
+        freq_text_rect.center = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 + 40)
         screen.blit(freq_text_box, freq_text_rect)
 
         # render bars
